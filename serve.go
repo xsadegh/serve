@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -20,7 +21,7 @@ func main() {
 	fs := http.FileServer(http.Dir(staticDir))
 	mux := http.NewServeMux()
 	mux.Handle("/healthz", health())
-	mux.Handle("/", fs)
+	mux.Handle("/", rootPath(fs))
 
 	log.Printf("starting to listen on %s", addr)
 	err := http.ListenAndServe(addr, mux)
@@ -36,4 +37,15 @@ func health() http.HandlerFunc {
 		w.WriteHeader(200)
 		_, _ = w.Write([]byte("ok"))
 	}
+}
+
+func rootPath(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/") {
+			http.NotFound(w, r)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
